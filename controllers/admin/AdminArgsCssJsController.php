@@ -133,8 +133,8 @@ class AdminArgsCssJsController extends ModuleAdminController
         @ini_set('memory_limit', '256M');
 
         $before_version = $this->module->version;
-        $repo_url = 'https://github.com/magnus2201/argscssjs/archive/refs/heads/main.zip';
-        $fallback_zip_url = 'https://raw.githubusercontent.com/magnus2201/argscssjs/main/argscssjs.zip';
+        $repo_url = 'https://github.com/magnus2201/argcssjs/archive/refs/heads/main.zip';
+        $fallback_zip_url = 'https://raw.githubusercontent.com/magnus2201/argcssjs/main/argscssjs.zip';
 
         $module_dir = _PS_MODULE_DIR_ . $this->module->name . '/';
         $tmp_zip = _PS_MODULE_DIR_ . 'argscssjs_update.zip';
