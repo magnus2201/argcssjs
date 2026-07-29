@@ -35,6 +35,13 @@ class AdminArgsCssJsController extends ModuleAdminController
         );
     }
 
+    public function initContent()
+    {
+        $this->display = 'edit';
+        $this->content .= $this->renderForm();
+        parent::initContent();
+    }
+
     public function postProcess()
     {
         if (Tools::isSubmit('processUpdateModule')) {
@@ -90,6 +97,32 @@ class AdminArgsCssJsController extends ModuleAdminController
 
         $this->fields_value['ARGCSSJS_CUSTOM_CSS'] = Configuration::get('ARGCSSJS_CUSTOM_CSS');
         $this->fields_value['ARGCSSJS_CUSTOM_JS'] = Configuration::get('ARGCSSJS_CUSTOM_JS');
+
+        // Dark IDE styling for textareas
+        $this->context->smarty->assign(array(
+            'dark_editor_css' => '<style>
+                textarea.codemirror-css {
+                    font-family: Consolas, Monaco, "Andale Mono", monospace !important;
+                    background: #1e293b !important;
+                    color: #38bdf8 !important;
+                    font-size: 14px !important;
+                    line-height: 1.5 !important;
+                    padding: 14px !important;
+                    border-radius: 8px !important;
+                    border: 1px solid #334155 !important;
+                }
+                textarea.codemirror-js {
+                    font-family: Consolas, Monaco, "Andale Mono", monospace !important;
+                    background: #0f172a !important;
+                    color: #facc15 !important;
+                    font-size: 14px !important;
+                    line-height: 1.5 !important;
+                    padding: 14px !important;
+                    border-radius: 8px !important;
+                    border: 1px solid #334155 !important;
+                }
+            </style>'
+        ));
 
         return parent::renderForm();
     }
