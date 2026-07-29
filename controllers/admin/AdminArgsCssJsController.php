@@ -227,9 +227,11 @@ class AdminArgsCssJsController extends ModuleAdminController
             @unlink($tmp_zip);
 
             $source_dir = '';
-            if (file_exists($extract_tmp . 'argscssjs-main/')) {
-                $source_dir = $extract_tmp . 'argscssjs-main/';
-            } elseif (file_exists($extract_tmp . 'argscssjs/')) {
+            if (file_exists($extract_tmp . 'argcssjs-main/argscssjs.php')) {
+                $source_dir = $extract_tmp . 'argcssjs-main/';
+            } elseif (file_exists($extract_tmp . 'argcssjs-main/argscssjs/argscssjs.php')) {
+                $source_dir = $extract_tmp . 'argcssjs-main/argscssjs/';
+            } elseif (file_exists($extract_tmp . 'argscssjs/argscssjs.php')) {
                 $source_dir = $extract_tmp . 'argscssjs/';
             } else {
                 $source_dir = $extract_tmp;
