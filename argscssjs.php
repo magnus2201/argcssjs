@@ -1,7 +1,8 @@
 <?php
 /**
  * 2026 ARGSEGURIDAD
- * Module: argscssjs (CSS y JS) v1.0.4
+ * Module: argscssjs (CSS y JS) v1.0.6
+ * Fix: Removed overflow:hidden from #content that was clipping page width & seller cards
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -14,7 +15,7 @@ class ArgsCssJs extends Module
     {
         $this->name = 'argscssjs';
         $this->tab = 'front_office_features';
-        $this->version = '1.0.5';
+        $this->version = '1.0.6';
         $this->author = 'ARGSEGURIDAD';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -80,7 +81,7 @@ class ArgsCssJs extends Module
     font-weight: 800 !important;
   }
 
-  /* Expandable content sections */
+  /* Expandable content sections - full width & no side cropping */
   .infoVendedores.desplegable,
   .infoServicioTecnico.desplegable,
   .infoAgendarReunion.desplegable,
@@ -92,13 +93,22 @@ class ArgsCssJs extends Module
     padding-bottom: 40px !important;
     margin-bottom: 30px !important;
     clear: both !important;
-    overflow: hidden !important;
+    overflow: visible !important;
+    width: 100% !important;
   }
 
   .desplegable.active-section {
     display: block !important;
     opacity: 1 !important;
   }
+}
+
+/* Clearfix for footer position without clipping width */
+.desplegable::after,
+.infoVendedores::after {
+  content: "";
+  display: table;
+  clear: both;
 }
 
 /* Hide big ARGSEGURIDAD watermark logo image in contact sections */
@@ -114,20 +124,22 @@ class ArgsCssJs extends Module
   display: none !important;
 }
 
-/* Fix footer overlap issue by forcing clearing & min-height on main CMS container */
+/* Ensure #content container does NOT clip width */
 #content.page-content,
 .cms-id-7 #content,
 .page-cms-7 #content {
   clear: both !important;
-  min-height: 500px !important;
-  overflow: hidden !important;
+  min-height: 400px !important;
+  overflow: visible !important;
 }
 
-/* Seller Grid spacing fix inside .infoVendedores */
+/* Full width seller grid inside .infoVendedores */
 .infoVendedores .argsellers-container {
-  margin-top: 20px !important;
-  margin-bottom: 40px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 20px auto 40px auto !important;
   clear: both !important;
+  overflow: visible !important;
 }';
     }
 
@@ -253,11 +265,11 @@ class ArgsCssJs extends Module
     public function runUpgradeModule()
     {
         if (class_exists('Module')) {
-            $up_file = _PS_MODULE_DIR_ . $this->name . '/upgrade/upgrade-1.0.4.php';
+            $up_file = _PS_MODULE_DIR_ . $this->name . '/upgrade/upgrade-1.0.6.php';
             if (file_exists($up_file)) {
                 include_once($up_file);
-                if (function_exists('upgrade_module_1_0_4')) {
-                    return upgrade_module_1_0_4($this);
+                if (function_exists('upgrade_module_1_0_6')) {
+                    return upgrade_module_1_0_6($this);
                 }
             }
         }
