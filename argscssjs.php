@@ -1,8 +1,8 @@
 <?php
 /**
  * 2026 ARGSEGURIDAD
- * Module: argscssjs (CSS y JS) v1.0.6
- * Fix: Removed overflow:hidden from #content that was clipping page width & seller cards
+ * Module: argscssjs (CSS y JS) v1.0.8
+ * Fix: JS DOM tab reordering + hide 2nd empty Elementor columns to expand content to 100% width and center
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -15,7 +15,7 @@ class ArgsCssJs extends Module
     {
         $this->name = 'argscssjs';
         $this->tab = 'front_office_features';
-        $this->version = '1.0.6';
+        $this->version = '1.0.8';
         $this->author = 'ARGSEGURIDAD';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -29,29 +29,25 @@ class ArgsCssJs extends Module
 
     public function getDefaultCss()
     {
-        return '/* Contact Page 4-Column Navigation System */
+        return '/* =========================================================
+   1. NAVEGACIÓN Y PESTAÑAS (4 COLUMNAS)
+   ========================================================= */
 @media (min-width: 992px) {
-  /* Flexbox order for tab titles: Vendedores 1st, Servicio Tecnico 2nd, Agendar Reunion 3rd, Sucursales 4th */
-  .vendedoresText { order: 1 !important; }
-  .servicioTecnicoText { order: 2 !important; }
-  .agendarReunionText { order: 3 !important; }
-  .sucursalesText { order: 4 !important; }
-
-  /* Tab Buttons styling & visibility */
   .vendedoresText,
   .servicioTecnicoText,
   .agendarReunionText,
   .sucursalesText {
     cursor: pointer !important;
-    padding: 12px 18px !important;
-    border-radius: 8px 8px 0 0 !important;
-    transition: all 0.2s ease-in-out !important;
+    padding: 14px 20px !important;
+    border-radius: 10px 10px 0 0 !important;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
     user-select: none !important;
     border-bottom: 3px solid transparent !important;
     color: #475569 !important;
     font-weight: 600 !important;
     font-size: 18px !important;
     text-align: center !important;
+    margin: 0 auto !important;
   }
 
   .vendedoresText:hover,
@@ -60,9 +56,17 @@ class ArgsCssJs extends Module
   .sucursalesText:hover {
     color: #0284c7 !important;
     background: #f0f9ff !important;
+    transform: translateY(-2px) !important;
   }
 
-  /* Active selected tab — high contrast & clear text */
+  .vendedoresText:active,
+  .servicioTecnicoText:active,
+  .agendarReunionText:active,
+  .sucursalesText:active {
+    transform: scale(0.96) !important;
+  }
+
+  /* Pestaña activa seleccionada (Alto Contraste) */
   .vendedoresText.active-tab,
   .servicioTecnicoText.active-tab,
   .agendarReunionText.active-tab,
@@ -71,6 +75,7 @@ class ArgsCssJs extends Module
     background: #e0f2fe !important;
     border-bottom: 4px solid #0284c7 !important;
     font-weight: 800 !important;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08) !important;
   }
 
   .vendedoresText.active-tab *,
@@ -81,65 +86,120 @@ class ArgsCssJs extends Module
     font-weight: 800 !important;
   }
 
-  /* Expandable content sections - full width & no side cropping */
+  /* Secciones desplegables */
   .infoVendedores.desplegable,
   .infoServicioTecnico.desplegable,
   .infoAgendarReunion.desplegable,
   .infoSucursales.desplegable {
     display: none !important;
     opacity: 0;
-    transition: opacity 0.3s ease-in-out;
-    padding-top: 20px !important;
+    padding-top: 25px !important;
     padding-bottom: 40px !important;
     margin-bottom: 30px !important;
     clear: both !important;
-    overflow: visible !important;
     width: 100% !important;
   }
 
+  /* Animación suave de aparición al hacer clic */
   .desplegable.active-section {
     display: block !important;
-    opacity: 1 !important;
+    animation: tabContentFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   }
 }
 
-/* Clearfix for footer position without clipping width */
-.desplegable::after,
-.infoVendedores::after {
-  content: "";
-  display: table;
-  clear: both;
+@keyframes tabContentFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-/* Hide big ARGSEGURIDAD watermark logo image in contact sections */
-.infoVendedores img[src*="logo"],
-.infoServicioTecnico img[src*="logo"],
-.infoAgendarReunion img[src*="logo"],
-.infoSucursales img[src*="logo"],
-.infoVendedores img[src*="ARGSEGURIDAD"],
-.infoServicioTecnico img[src*="ARGSEGURIDAD"],
-.infoAgendarReunion img[src*="ARGSEGURIDAD"],
-.infoSucursales img[src*="ARGSEGURIDAD"],
-.desplegable img[src*="ARGSEGURIDAD"] {
-  display: none !important;
-}
-
-/* Ensure #content container does NOT clip width */
-#content.page-content,
-.cms-id-7 #content,
-.page-cms-7 #content {
-  clear: both !important;
-  min-height: 400px !important;
-  overflow: visible !important;
-}
-
-/* Full width seller grid inside .infoVendedores */
+/* =========================================================
+   2. HIDE EMPTY 2ND COLUMNS & FORCES 100% WIDTH CONTENT
+   ========================================================= */
+.infoVendedores .elementor-column:first-child,
+.infoServicioTecnico .elementor-column:first-child,
+.infoAgendarReunion .elementor-column:first-child,
+.infoVendedores .elementor-widget-wrap,
+.infoServicioTecnico .elementor-widget-wrap,
+.infoAgendarReunion .elementor-widget-wrap,
 .infoVendedores .argsellers-container {
   width: 100% !important;
   max-width: 100% !important;
-  margin: 20px auto 40px auto !important;
-  clear: both !important;
-  overflow: visible !important;
+  min-width: 100% !important;
+  flex: 0 0 100% !important;
+  float: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.infoVendedores .elementor-column:nth-child(2),
+.infoServicioTecnico .elementor-column:nth-child(2),
+.infoAgendarReunion .elementor-column:nth-child(2) {
+  display: none !important;
+}
+
+.argsellers-grid {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  gap: 15px !important;
+}
+
+.argseller-card {
+  flex: 1 1 15% !important;
+  min-width: 140px !important;
+}
+
+/* =========================================================
+   3. CENTRADO PERFECTO DE SERVICIO TÉCNICO Y AGENDAR REUNIÓN
+   ========================================================= */
+.infoServicioTecnico,
+.infoAgendarReunion,
+.infoServicioTecnico *,
+.infoAgendarReunion * {
+  text-align: center !important;
+}
+
+.infoServicioTecnico .elementor-widget,
+.infoAgendarReunion .elementor-widget,
+.infoServicioTecnico .elementor-container,
+.infoAgendarReunion .elementor-container {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.infoServicioTecnico a,
+.infoAgendarReunion a,
+.infoServicioTecnico .elementor-button,
+.infoAgendarReunion .elementor-button {
+  display: inline-block !important;
+  margin: 20px auto !important;
+}
+
+/* =========================================================
+   4. OCULTAR LOGO GIGANTE Y LIMPIEZA DE FOOTER
+   ========================================================= */
+.desplegable img[src*="ARGSEGURIDAD"],
+.desplegable img[src*="logo"] {
+  display: none !important;
+}
+
+.desplegable::after {
+  content: "";
+  display: table;
+  clear: both;
 }';
     }
 
@@ -148,6 +208,27 @@ class ArgsCssJs extends Module
         return '(function initContactTabs() {
   function run() {
     if (window.innerWidth < 992) return;
+
+    // 1. Physical DOM reordering of tab columns: Vendedores (1st), Servicio Tecnico (2nd), Agendar Reunion (3rd), Sucursales (4th)
+    var vBtn = document.querySelector(\'.vendedoresText\');
+    var stBtn = document.querySelector(\'.servicioTecnicoText\');
+    var arBtn = document.querySelector(\'.agendarReunionText\');
+    var sucBtn = document.querySelector(\'.sucursalesText\');
+
+    if (vBtn && stBtn && arBtn && sucBtn) {
+      var vCol = vBtn.closest(\'.elementor-column\') || vBtn;
+      var stCol = stBtn.closest(\'.elementor-column\') || stBtn;
+      var arCol = arBtn.closest(\'.elementor-column\') || arBtn;
+      var sucCol = sucBtn.closest(\'.elementor-column\') || sucBtn;
+
+      var parentRow = vCol.parentNode;
+      if (parentRow) {
+        parentRow.appendChild(vCol);
+        parentRow.appendChild(stCol);
+        parentRow.appendChild(arCol);
+        parentRow.appendChild(sucCol);
+      }
+    }
 
     var tabs = [
       { btn: \'.vendedoresText\', target: \'.infoVendedores\' },
@@ -265,11 +346,11 @@ class ArgsCssJs extends Module
     public function runUpgradeModule()
     {
         if (class_exists('Module')) {
-            $up_file = _PS_MODULE_DIR_ . $this->name . '/upgrade/upgrade-1.0.6.php';
+            $up_file = _PS_MODULE_DIR_ . $this->name . '/upgrade/upgrade-1.0.8.php';
             if (file_exists($up_file)) {
                 include_once($up_file);
-                if (function_exists('upgrade_module_1_0_6')) {
-                    return upgrade_module_1_0_6($this);
+                if (function_exists('upgrade_module_1_0_8')) {
+                    return upgrade_module_1_0_8($this);
                 }
             }
         }
