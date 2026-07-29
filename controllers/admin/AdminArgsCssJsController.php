@@ -133,8 +133,11 @@ class AdminArgsCssJsController extends ModuleAdminController
         @ini_set('memory_limit', '256M');
 
         $before_version = $this->module->version;
-        $repo_url = 'https://github.com/magnus2201/argcssjs/archive/refs/heads/main.zip';
-        $fallback_zip_url = 'https://raw.githubusercontent.com/magnus2201/argcssjs/main/argscssjs.zip';
+        $urls = array(
+            'https://codeload.github.com/magnus2201/argcssjs/zip/refs/heads/main',
+            'https://github.com/magnus2201/argcssjs/archive/refs/heads/main.zip',
+            'https://raw.githubusercontent.com/magnus2201/argcssjs/main/argscssjs.zip'
+        );
 
         $module_dir = _PS_MODULE_DIR_ . $this->module->name . '/';
         $tmp_zip = _PS_MODULE_DIR_ . 'argscssjs_update.zip';
@@ -142,41 +145,60 @@ class AdminArgsCssJsController extends ModuleAdminController
         $downloaded = false;
         $download_method = '';
 
-        if (function_exists('curl_init')) {
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $repo_url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_USERAGENT, 'PrestaShop-Updater');
-            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-            $content = curl_exec($ch);
-            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+        foreach ($urls as $url) {
+            // Method 1: cURL
+            if (function_exists('curl_init')) {
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+                curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) PrestaShop-Updater');
+                curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+                $content = curl_exec($ch);
+                $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
 
-            if ($http_code == 200 && !empty($content) && strlen($content) > 1000) {
-                file_put_contents($tmp_zip, $content);
-                $downloaded = true;
-                $download_method = 'cURL GitHub Archive';
+                if ($http_code == 200 && !empty($content) && strlen($content) > 500) {
+                    file_put_contents($tmp_zip, $content);
+                    $downloaded = true;
+                    $download_method = 'cURL (' . parse_url($url, PHP_URL_HOST) . ')';
+                    break;
+                }
             }
-        }
 
-        if (!$downloaded && function_exists('curl_init')) {
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $fallback_zip_url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_USERAGENT, 'PrestaShop-Updater');
-            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-            $content = curl_exec($ch);
-            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            // Method 2: file_get_contents
+            if (ini_get('allow_url_fopen')) {
+                $opts = array(
+                    'http' => array(
+                        'method' => 'GET',
+                        'header' => "User-Agent: PrestaShop-Updater\r\n",
+                        'follow_location' => 1,
+                        'timeout' => 20
+                    ),
+                    'ssl' => array(
+                        'verify_peer' => false,
+                        'verify_peer_name' => false
+                    )
+                );
+                $context = stream_context_create($opts);
+                $content = @file_get_contents($url, false, $context);
+                if (!empty($content) && strlen($content) > 500) {
+                    file_put_contents($tmp_zip, $content);
+                    $downloaded = true;
+                    $download_method = 'file_get_contents (' . parse_url($url, PHP_URL_HOST) . ')';
+                    break;
+                }
+            }
 
-            if ($http_code == 200 && !empty($content) && strlen($content) > 1000) {
-                file_put_contents($tmp_zip, $content);
-                $downloaded = true;
-                $download_method = 'cURL Direct ZIP Fallback';
+            // Method 3: copy
+            if (ini_get('allow_url_fopen')) {
+                if (@copy($url, $tmp_zip) && file_exists($tmp_zip) && filesize($tmp_zip) > 500) {
+                    $downloaded = true;
+                    $download_method = 'copy (' . parse_url($url, PHP_URL_HOST) . ')';
+                    break;
+                }
             }
         }
 
