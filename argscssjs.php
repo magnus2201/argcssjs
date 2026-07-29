@@ -1,8 +1,8 @@
 <?php
 /**
  * 2026 ARGSEGURIDAD
- * Module: argscssjs (CSS y JS) v1.0.8
- * Fix: JS DOM tab reordering + hide 2nd empty Elementor columns to expand content to 100% width and center
+ * Module: argscssjs (CSS y JS) v1.0.9
+ * Fix: High-specificity Elementor column width override (100% width for Vendedores, Centered Servicio Tecnico & Agendar Reunion, JS DOM Tab Reorder)
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -15,7 +15,7 @@ class ArgsCssJs extends Module
     {
         $this->name = 'argscssjs';
         $this->tab = 'front_office_features';
-        $this->version = '1.0.8';
+        $this->version = '1.0.9';
         $this->author = 'ARGSEGURIDAD';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -119,11 +119,14 @@ class ArgsCssJs extends Module
 }
 
 /* =========================================================
-   2. HIDE EMPTY 2ND COLUMNS & FORCES 100% WIDTH CONTENT
+   2. ALTA ESPECIFICIDAD PARA FORZAR 100% ANCHO EN CONTENIDO
    ========================================================= */
-.infoVendedores .elementor-column:first-child,
-.infoServicioTecnico .elementor-column:first-child,
-.infoAgendarReunion .elementor-column:first-child,
+.infoVendedores div[class*="elementor-column"],
+.infoServicioTecnico div[class*="elementor-column"],
+.infoAgendarReunion div[class*="elementor-column"],
+div.infoVendedores div.elementor-column,
+div.infoServicioTecnico div.elementor-column,
+div.infoAgendarReunion div.elementor-column,
 .infoVendedores .elementor-widget-wrap,
 .infoServicioTecnico .elementor-widget-wrap,
 .infoAgendarReunion .elementor-widget-wrap,
@@ -139,16 +142,19 @@ class ArgsCssJs extends Module
   padding-right: 0 !important;
 }
 
-.infoVendedores .elementor-column:nth-child(2),
-.infoServicioTecnico .elementor-column:nth-child(2),
-.infoAgendarReunion .elementor-column:nth-child(2) {
+/* Ocultar 2ª columna vacía de Elementor donde estaba la marca de agua */
+.infoVendedores div[class*="elementor-column"]:nth-child(2),
+.infoServicioTecnico div[class*="elementor-column"]:nth-child(2),
+.infoAgendarReunion div[class*="elementor-column"]:nth-child(2) {
   display: none !important;
+  width: 0 !important;
+  flex: 0 0 0 !important;
 }
 
 .argsellers-grid {
   display: flex !important;
   flex-wrap: nowrap !important;
-  justify-content: space-between !important;
+  justify-content: space-around !important;
   width: 100% !important;
   gap: 15px !important;
 }
@@ -209,7 +215,7 @@ class ArgsCssJs extends Module
   function run() {
     if (window.innerWidth < 992) return;
 
-    // 1. Physical DOM reordering of tab columns: Vendedores (1st), Servicio Tecnico (2nd), Agendar Reunion (3rd), Sucursales (4th)
+    // 1. Reordenamiento físico en el DOM de las 4 columnas de los botones
     var vBtn = document.querySelector(\'.vendedoresText\');
     var stBtn = document.querySelector(\'.servicioTecnicoText\');
     var arBtn = document.querySelector(\'.agendarReunionText\');
@@ -346,11 +352,11 @@ class ArgsCssJs extends Module
     public function runUpgradeModule()
     {
         if (class_exists('Module')) {
-            $up_file = _PS_MODULE_DIR_ . $this->name . '/upgrade/upgrade-1.0.8.php';
+            $up_file = _PS_MODULE_DIR_ . $this->name . '/upgrade/upgrade-1.0.9.php';
             if (file_exists($up_file)) {
                 include_once($up_file);
-                if (function_exists('upgrade_module_1_0_8')) {
-                    return upgrade_module_1_0_8($this);
+                if (function_exists('upgrade_module_1_0_9')) {
+                    return upgrade_module_1_0_9($this);
                 }
             }
         }
