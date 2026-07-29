@@ -1,8 +1,8 @@
 <?php
 /**
  * 2026 ARGSEGURIDAD
- * AdminController for argscssjs module v1.0.2
- * Fix: HelperForm single render & prevent ObjectModel Configuration->name error
+ * AdminController for argscssjs module v1.0.5
+ * Standardized update process matching AdminArgsSellersController architecture
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -33,6 +33,17 @@ class AdminArgsCssJsController extends ModuleAdminController
 
     public function initContent()
     {
+        if (isset($this->context->cookie->argscssjs_conf)) {
+            $type = isset($this->context->cookie->argscssjs_conf_type) ? $this->context->cookie->argscssjs_conf_type : 'success';
+            if ($type === 'warning') {
+                $this->warnings[] = $this->context->cookie->argscssjs_conf;
+            } else {
+                $this->confirmations[] = $this->context->cookie->argscssjs_conf;
+            }
+            unset($this->context->cookie->argscssjs_conf);
+            unset($this->context->cookie->argscssjs_conf_type);
+        }
+
         $this->content .= $this->renderForm();
         parent::initContent();
     }
@@ -141,161 +152,136 @@ class AdminArgsCssJsController extends ModuleAdminController
         @ini_set('max_execution_time', 120);
         @ini_set('memory_limit', '256M');
 
-        $before_version = $this->module->version;
-        $urls = array(
-            'https://codeload.github.com/magnus2201/argcssjs/zip/refs/heads/main',
-            'https://github.com/magnus2201/argcssjs/archive/refs/heads/main.zip',
-            'https://raw.githubusercontent.com/magnus2201/argcssjs/main/argscssjs.zip'
+        $version_before = $this->module->version;
+        $github_repo = 'magnus2201/argcssjs';
+        $download_urls = array(
+            'https://codeload.github.com/' . $github_repo . '/zip/refs/heads/main',
+            'https://github.com/' . $github_repo . '/archive/refs/heads/main.zip',
+            'https://raw.githubusercontent.com/' . $github_repo . '/main/argscssjs.zip'
         );
 
-        $module_dir = _PS_MODULE_DIR_ . $this->module->name . '/';
-        $tmp_zip = _PS_MODULE_DIR_ . 'argscssjs_update.zip';
+        $zip_file = _PS_MODULE_DIR_ . $this->module->name . '_update.zip';
+        $file_downloaded = false;
+        $download_error = '';
 
-        $downloaded = false;
-        $download_method = '';
-
-        foreach ($urls as $url) {
-            // Method 1: cURL
+        foreach ($download_urls as $download_url) {
             if (function_exists('curl_init')) {
                 $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_URL, $download_url);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
                 curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
                 curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) PrestaShop-Updater');
-                curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-                $content = curl_exec($ch);
-                $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 25);
+                $file_data = curl_exec($ch);
+                $last_http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
                 curl_close($ch);
 
-                if ($http_code == 200 && !empty($content) && strlen($content) > 500) {
-                    file_put_contents($tmp_zip, $content);
-                    $downloaded = true;
-                    $download_method = 'cURL (' . parse_url($url, PHP_URL_HOST) . ')';
+                if ($last_http_code == 200 && !empty($file_data) && strlen($file_data) > 500) {
+                    file_put_contents($zip_file, $file_data);
+                    $file_downloaded = true;
                     break;
                 }
             }
 
-            // Method 2: file_get_contents
-            if (ini_get('allow_url_fopen')) {
+            if (!$file_downloaded && ini_get('allow_url_fopen')) {
                 $opts = array(
                     'http' => array(
                         'method' => 'GET',
-                        'header' => "User-Agent: PrestaShop-Updater\r\n",
-                        'follow_location' => 1,
-                        'timeout' => 20
+                        'header' => "User-Agent: Mozilla/5.0 PrestaShop-Updater\r\n",
+                        'timeout' => 25
                     ),
-                    'ssl' => array(
-                        'verify_peer' => false,
-                        'verify_peer_name' => false
-                    )
+                    'ssl' => array('verify_peer' => false, 'verify_peer_name' => false)
                 );
-                $context = stream_context_create($opts);
-                $content = @file_get_contents($url, false, $context);
-                if (!empty($content) && strlen($content) > 500) {
-                    file_put_contents($tmp_zip, $content);
-                    $downloaded = true;
-                    $download_method = 'file_get_contents (' . parse_url($url, PHP_URL_HOST) . ')';
-                    break;
-                }
-            }
-
-            // Method 3: copy
-            if (ini_get('allow_url_fopen')) {
-                if (@copy($url, $tmp_zip) && file_exists($tmp_zip) && filesize($tmp_zip) > 500) {
-                    $downloaded = true;
-                    $download_method = 'copy (' . parse_url($url, PHP_URL_HOST) . ')';
+                $stream_data = @file_get_contents($download_url, false, stream_context_create($opts));
+                if (!empty($stream_data) && strlen($stream_data) > 500) {
+                    file_put_contents($zip_file, $stream_data);
+                    $file_downloaded = true;
                     break;
                 }
             }
         }
 
-        if (!$downloaded) {
-            $this->errors[] = $this->l('No se pudo descargar la actualización desde GitHub. Verifica la conexión del servidor.');
-            return;
+        $version_after = $version_before;
+        if (file_exists($zip_file) && class_exists('ZipArchive')) {
+            $zip = new ZipArchive();
+            if ($zip->open($zip_file) === true) {
+                $temp_extract = _PS_MODULE_DIR_ . $this->module->name . '_extracted_temp/';
+                if (!file_exists($temp_extract)) {
+                    mkdir($temp_extract, 0755, true);
+                }
+                $zip->extractTo($temp_extract);
+                $zip->close();
+
+                $subfolders = glob($temp_extract . '*', GLOB_ONLYDIR);
+                $source_dir = $temp_extract;
+                if (!empty($subfolders)) {
+                    foreach ($subfolders as $sf) {
+                        if (file_exists($sf . '/argscssjs.php')) {
+                            $source_dir = $sf . '/';
+                            break;
+                        } elseif (file_exists($sf . '/argscssjs/argscssjs.php')) {
+                            $source_dir = $sf . '/argscssjs/';
+                            break;
+                        }
+                    }
+                }
+
+                $new_module_file = $source_dir . 'argscssjs.php';
+                if (file_exists($new_module_file)) {
+                    $new_content = file_get_contents($new_module_file);
+                    if (preg_match("/\\\$this->version\s*=\s*'([^']+)'/", $new_content, $matches)) {
+                        $version_after = $matches[1];
+                    }
+                }
+
+                $this->rcopy($source_dir, _PS_MODULE_DIR_ . $this->module->name . '/');
+
+                if (class_exists('Tools') && method_exists('Tools', 'deleteDirectory')) {
+                    Tools::deleteDirectory($temp_extract, true);
+                }
+                @unlink($zip_file);
+            }
         }
 
-        $zip = new ZipArchive();
-        if ($zip->open($tmp_zip) === true) {
-            $extract_tmp = _PS_MODULE_DIR_ . 'argscssjs_tmp_extract/';
-            if (!file_exists($extract_tmp)) {
-                mkdir($extract_tmp, 0755, true);
-            }
-            $zip->extractTo($extract_tmp);
-            $zip->close();
-            @unlink($tmp_zip);
+        if (method_exists($this->module, 'runUpgradeModule')) {
+            $this->module->runUpgradeModule();
+        }
 
-            $source_dir = '';
-            if (file_exists($extract_tmp . 'argcssjs-main/argscssjs.php')) {
-                $source_dir = $extract_tmp . 'argcssjs-main/';
-            } elseif (file_exists($extract_tmp . 'argcssjs-main/argscssjs/argscssjs.php')) {
-                $source_dir = $extract_tmp . 'argcssjs-main/argscssjs/';
-            } elseif (file_exists($extract_tmp . 'argscssjs/argscssjs.php')) {
-                $source_dir = $extract_tmp . 'argscssjs/';
-            } else {
-                $source_dir = $extract_tmp;
-            }
+        try {
+            Tools::clearSmartyCache();
+            Tools::clearXMLCache();
+            Media::clearCache();
+        } catch (Exception $e) {
+        }
 
-            $this->recursiveCopy($source_dir, $module_dir);
-            $this->recursiveRemoveDir($extract_tmp);
-
-            Tools::clearAllCache();
-
-            if (class_exists('Module')) {
-                $updated_module = Module::getInstanceByName('argscssjs');
-                if ($updated_module && method_exists($updated_module, 'runUpgradeModule')) {
-                    $updated_module->runUpgradeModule();
-                }
-            }
-
-            $after_module = Module::getInstanceByName('argscssjs');
-            $after_version = $after_module ? $after_module->version : 'desconocida';
-
-            if ($before_version === $after_version) {
-                $this->warnings[] = sprintf(
-                    $this->l('El módulo ya se encuentra en la última versión (%s). Se refrescaron todos los archivos correctamente.'),
-                    $after_version
-                );
-            } else {
-                $this->confirmations[] = sprintf(
-                    $this->l('¡Módulo actualizado con éxito! Versión anterior: %s | Nueva versión instalada: %s (Vía %s).'),
-                    $before_version,
-                    $after_version,
-                    $download_method
-                );
-            }
+        if ($file_downloaded) {
+            $msg = 'Módulo actualizado correctamente desde GitHub (' . $github_repo . '). Versión anterior: v' . $version_before . ' -> Nueva versión: v' . $version_after . '. Cache purgada.';
+            $this->context->cookie->argscssjs_conf = $msg;
+            $this->context->cookie->argscssjs_conf_type = 'success';
         } else {
-            @unlink($tmp_zip);
-            $this->errors[] = $this->l('El archivo comprimido descargado está dañado o no es un ZIP válido.');
+            $msg = 'No se pudo descargar la actualización desde GitHub. Verifica la conexión.';
+            $this->context->cookie->argscssjs_conf = $msg;
+            $this->context->cookie->argscssjs_conf_type = 'warning';
         }
+
+        Tools::redirectAdmin(self::$currentIndex . '&token=' . $this->token);
     }
 
-    private function recursiveCopy($src, $dst)
+    private function rcopy($src, $dst)
     {
-        $dir = opendir($src);
-        @mkdir($dst, 0755, true);
-        while (false !== ($file = readdir($dir))) {
-            if (($file != '.') && ($file != '..')) {
-                if (is_dir($src . '/' . $file)) {
-                    $this->recursiveCopy($src . '/' . $file, $dst . '/' . $file);
-                } else {
-                    copy($src . '/' . $file, $dst . '/' . $file);
+        if (!file_exists($src)) return;
+        if (is_dir($src)) {
+            if (!file_exists($dst)) mkdir($dst, 0755, true);
+            $files = scandir($src);
+            foreach ($files as $file) {
+                if ($file != "." && $file != "..") {
+                    $this->rcopy("$src/$file", "$dst/$file");
                 }
             }
+        } else if (file_exists($src)) {
+            copy($src, $dst);
         }
-        closedir($dir);
-    }
-
-    private function recursiveRemoveDir($dir)
-    {
-        if (!file_exists($dir)) {
-            return;
-        }
-        $files = array_diff(scandir($dir), array('.', '..'));
-        foreach ($files as $file) {
-            (is_dir("$dir/$file")) ? $this->recursiveRemoveDir("$dir/$file") : unlink("$dir/$file");
-        }
-        return rmdir($dir);
     }
 }
