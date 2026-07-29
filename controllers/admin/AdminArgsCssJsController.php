@@ -1,7 +1,8 @@
 <?php
 /**
  * 2026 ARGSEGURIDAD
- * AdminController for argscssjs module
+ * AdminController for argscssjs module v1.0.2
+ * Fix: HelperForm single render & prevent ObjectModel Configuration->name error
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -13,11 +14,6 @@ class AdminArgsCssJsController extends ModuleAdminController
     public function __construct()
     {
         $this->bootstrap = true;
-        $this->table = 'configuration';
-        $this->className = 'Configuration';
-        $this->identifier = 'id_configuration';
-        $this->lang = false;
-
         parent::__construct();
 
         $this->meta_title = $this->l('CSS y JS Personalizado');
@@ -37,7 +33,6 @@ class AdminArgsCssJsController extends ModuleAdminController
 
     public function initContent()
     {
-        $this->display = 'edit';
         $this->content .= $this->renderForm();
         parent::initContent();
     }
@@ -58,45 +53,59 @@ class AdminArgsCssJsController extends ModuleAdminController
 
             $this->confirmations[] = $this->l('Código CSS y JS guardado correctamente.');
         }
+    }
 
-        parent::postProcess();
+    public function getFieldsForm()
+    {
+        return array(
+            'form' => array(
+                'legend' => array(
+                    'title' => $this->l('Configuración de CSS y JS Personalizado'),
+                    'icon' => 'icon-code',
+                ),
+                'input' => array(
+                    array(
+                        'type' => 'textarea',
+                        'label' => $this->l('Código CSS Personalizado'),
+                        'name' => 'ARGCSSJS_CUSTOM_CSS',
+                        'cols' => 80,
+                        'rows' => 15,
+                        'desc' => $this->l('Escribí tus reglas de CSS aquí. Se inyectarán automáticamente en la tienda.'),
+                        'class' => 'codemirror-css',
+                    ),
+                    array(
+                        'type' => 'textarea',
+                        'label' => $this->l('Código JavaScript Personalizado'),
+                        'name' => 'ARGCSSJS_CUSTOM_JS',
+                        'cols' => 80,
+                        'rows' => 20,
+                        'desc' => $this->l('Escribí tus scripts de JS aquí. Se inyectarán automáticamente en la tienda.'),
+                        'class' => 'codemirror-js',
+                    ),
+                ),
+                'submit' => array(
+                    'title' => $this->l('Guardar Cambios'),
+                    'class' => 'btn btn-primary pull-right',
+                ),
+            ),
+        );
     }
 
     public function renderForm()
     {
-        $this->fields_form = array(
-            'legend' => array(
-                'title' => $this->l('Configuración de CSS y JS Personalizado'),
-                'icon' => 'icon-code',
-            ),
-            'input' => array(
-                array(
-                    'type' => 'textarea',
-                    'label' => $this->l('Código CSS Personalizado'),
-                    'name' => 'ARGCSSJS_CUSTOM_CSS',
-                    'cols' => 80,
-                    'rows' => 15,
-                    'desc' => $this->l('Escribí tus reglas de CSS aquí. Se inyectarán automáticamente en el <head> de la tienda.'),
-                    'class' => 'codemirror-css',
-                ),
-                array(
-                    'type' => 'textarea',
-                    'label' => $this->l('Código JavaScript Personalizado'),
-                    'name' => 'ARGCSSJS_CUSTOM_JS',
-                    'cols' => 80,
-                    'rows' => 20,
-                    'desc' => $this->l('Escribí tus scripts de JS aquí. Se inyectarán automáticamente en la tienda.'),
-                    'class' => 'codemirror-js',
-                ),
-            ),
-            'submit' => array(
-                'title' => $this->l('Guardar Cambios'),
-                'class' => 'btn btn-primary pull-right',
-            ),
-        );
+        $helper = new HelperForm();
+        $helper->show_toolbar = false;
+        $helper->table = 'configuration';
+        $helper->module = $this->module;
+        $helper->default_form_language = $this->context->language->id;
+        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
+        $helper->identifier = 'id_configuration';
+        $helper->submit_action = 'submitArgsCssJs';
+        $helper->currentIndex = $this->context->link->getAdminLink('AdminArgsCssJs', false);
+        $helper->token = Tools::getAdminTokenLite('AdminArgsCssJs');
 
-        $this->fields_value['ARGCSSJS_CUSTOM_CSS'] = Configuration::get('ARGCSSJS_CUSTOM_CSS');
-        $this->fields_value['ARGCSSJS_CUSTOM_JS'] = Configuration::get('ARGCSSJS_CUSTOM_JS');
+        $helper->fields_value['ARGCSSJS_CUSTOM_CSS'] = Configuration::get('ARGCSSJS_CUSTOM_CSS');
+        $helper->fields_value['ARGCSSJS_CUSTOM_JS'] = Configuration::get('ARGCSSJS_CUSTOM_JS');
 
         // Dark IDE styling for textareas
         $this->context->smarty->assign(array(
@@ -124,7 +133,7 @@ class AdminArgsCssJsController extends ModuleAdminController
             </style>'
         ));
 
-        return parent::renderForm();
+        return $helper->generateForm(array($this->getFieldsForm()));
     }
 
     public function processUpdateModule()
